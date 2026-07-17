@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #faf5eb;
+  --surface: #fffdf8;
+  --foreground: #241a12;
+  --accent: #b8862f;
+  --accent-foreground: #ffffff;
+  --border: rgb(36 26 18 / 0.1);
+}
+
+.dark {
+  --background: #161013;
+  --surface: #221820;
+  --foreground: #f7f1e6;
+  --accent: #e9c87e;
+  --accent-foreground: #20160a;
+  --border: rgb(247 241 230 / 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --font-display: var(--font-playfair);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Motif pagne discret : lignes diagonales or, opacité 5% */
+.pagne-pattern {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-accent) 0,
+    var(--color-accent) 1px,
+    transparent 1px,
+    transparent 24px
+  );
+  opacity: 0.05;
+}
+
+@keyframes cascade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cascade {
+  opacity: 0;
+  animation: cascade-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes halo-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(from var(--color-accent) r g b / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgb(from var(--color-accent) r g b / 0);
+  }
+}
+
+.halo-pulse {
+  animation: halo-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cascade {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  .halo-pulse {
+    animation: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
