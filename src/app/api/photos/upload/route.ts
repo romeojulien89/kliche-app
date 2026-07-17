@@ -1,0 +1,90 @@
+import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { processPhoto } from "@/lib/watermark";
+
+export async function POST(request: Request) {
+  const formData = await request.formData();
+  const file = formData.get("file");
+  const eventId = String(formData.get("event_id") ?? "");
+
+  if (!(file instanceof File) || !eventId) {
+    return NextResponse.json(
+      { error: "Fichier ou événement manquant." },
+      { status: 400 },
+    );
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("id, sponsor_name")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (!event) {
+    return NextResponse.json({ error: "Événement introuvable." }, { status: 404 });
+  }
+
+  const { data: photoRow, error: insertError } = await supabase
+    .from("photos")
+    .insert({ event_id: event.id, status: "processing" })
+    .select("id")
+    .single();
+
+  if (insertError || !photoRow) {
+    return NextResponse.json(
+      { error: "Erreur lors de la création de la photo." },
+      { status: 500 },
+    );
+  }
+
+  try {
+    const input = Buffer.from(await file.arrayBuffer());
+    const { hd, preview } = await processPhoto(input, event.sponsor_name);
+
+    const baseName = `${event.id}/${photoRow.id}-${randomUUID()}`;
+    const hdPath = `${baseName}.jpg`;
+    const previewPath = `${baseName}.jpg`;
+
+    const [hdUpload, previewUpload] = await Promise.all([
+      supabase.storage
+        .from("photos-hd")
+        .upload(hdPath, hd, { contentType: "image/jpeg" }),
+      supabase.storage
+        .from("photos-preview")
+        .upload(previewPath, preview, { contentType: "image/jpeg" }),
+    ]);
+
+    if (hdUpload.error || previewUpload.error) {
+      throw hdUpload.error ?? previewUpload.error;
+    }
+
+    await supabase
+      .from("photos")
+      .update({
+        storage_path_hd: hdPath,
+        storage_path_preview: previewPath,
+        status: "ready",
+      })
+      .eq("id", photoRow.id);
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("photos-preview").getPublicUrl(previewPath);
+
+    return NextResponse.json({ id: photoRow.id, previewUrl: publicUrl });
+  } catch (err) {
+    console.error("[photos/upload]", err);
+    await supabase
+      .from("photos")
+      .update({ status: "error" })
+      .eq("id", photoRow.id);
+
+    return NextResponse.json(
+      { error: "Erreur lors du traitement de la photo." },
+      { status: 500 },
+    );
+  }
+}
