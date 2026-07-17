@@ -1,12 +1,17 @@
 export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center">
-      <p
-        className="cascade text-xs font-medium tracking-[0.3em] text-accent uppercase"
-        style={{ animationDelay: "0.1s" }}
-      >
-        Rocket Corporation
-      </p>
+      <div
+        role="img"
+        aria-label="Rocket Corporation"
+        className="cascade mask-logo text-accent h-4 sm:h-5"
+        style={{
+          animationDelay: "0.1s",
+          aspectRatio: "1772 / 482",
+          WebkitMaskImage: "url(/rocket-corporation.png)",
+          maskImage: "url(/rocket-corporation.png)",
+        }}
+      />
 
       <h1
         className="cascade font-display mt-6 text-6xl font-bold tracking-[0.08em] text-foreground sm:text-8xl"

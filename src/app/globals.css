@@ -37,6 +37,17 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Logo recoloré via masque CSS : s'adapte à la couleur d'accent du thème actif */
+.mask-logo {
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
 /* Motif pagne discret : lignes diagonales or, opacité 5% */
 .pagne-pattern {
   background-image: repeating-linear-gradient(
