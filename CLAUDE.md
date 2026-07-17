@@ -28,15 +28,19 @@ src/
     page.tsx           # page d'accueil
     globals.css         # tokens couleur clair/sombre, motif pagne, animations cascade/halo
     admin/               # création d'événement (non protégé — pas d'auth admin pour l'instant)
-    e/[code]/             # accueil invité, consentement, galerie publique, stub selfie
+                          # crée aussi la Collection Rekognition de l'événement (CreateCollectionCommand)
+    e/[code]/             # accueil invité, consentement, galerie publique, capture selfie + galerie perso
     studio/                # upload photographe (non protégé), dropzone + file d'attente
-    api/photos/upload/      # Route Handler : reçoit le fichier, appelle processPhoto, stocke, insère en DB
+    api/photos/upload/      # Route Handler : processPhoto (sharp) + stockage + IndexFaces + rattachement auto
+    api/guests/selfie/       # Route Handler : IndexFaces du selfie + SearchFacesByImage → lie photo_faces.guest_id
+    api/guests/photos/        # Route Handler : GET, renvoie les photos déjà matchées pour l'invité courant (polling)
   components/
     theme-toggle.tsx    # pilule Auto/Clair/Sombre (haut droit), persistée localStorage
   lib/
     theme.ts             # logique thème (auto = 6h-18h clair, sinon sombre) + script d'init inline
     event-code.ts          # génère le code court (6 car., sans O/0/I/1) affiché sur le QR
     watermark.ts            # sharp : redimensionnement HD/preview + filigrane KLICHÉ + cadre sponsor (SVG composité)
+    rekognition.ts            # client Rekognition + conventions CollectionId/ExternalImageId (photo-<id>, guest-<id>)
     supabase/
       client.ts             # client navigateur (clé publishable)
       server.ts               # client Server Component (cookies, RLS via anon/publishable)
@@ -63,12 +67,16 @@ src/
 - Après toute modif de `.env.local`, redémarrer le serveur dev (Next.js ne recharge pas les env vars à chaud).
 - `photos`, `guests`, etc. n'ont aucune policy RLS publique par design → toute lecture/écriture ciblée côté serveur (y compris pages publiques comme `/e/[code]/galerie`) doit utiliser `createAdminClient()`, jamais le client anon (`lib/supabase/server.ts`), sinon la requête renvoie silencieusement un tableau vide.
 - `sharp` : ne jamais appeler `.metadata()` sur un pipeline après un `.resize()` pour connaître les dimensions de sortie — ça renvoie les dimensions **originales** (le resize est appliqué en lazy à la génération). Calculer soi-même les dimensions cibles avant de composer un overlay (voir `watermark.ts`).
+- Rekognition : une Collection par événement, nommée `kliche-<event.id>` (créée à la création de l'événement, échec non bloquant — voir `admin/actions.ts`). Chaque visage indexé porte un `ExternalImageId` préfixé `photo-<photo.id>` (upload photographe) ou `guest-<guest.id>` (selfie invité) — c'est ce préfixe qui permet de distinguer les deux types de visages dans les résultats `SearchFaces`/`SearchFacesByImage` (voir `lib/rekognition.ts`).
+- Le matching est bidirectionnel : à l'upload d'une photo, on cherche si un visage indexé correspond à un `guest-*` déjà enregistré ; au selfie d'un invité, on cherche si son visage correspond à des `photo-*` déjà indexées. Les deux écritures mettent à jour `photo_faces.guest_id`/`similarity` — c'est ce qui fait que la galerie personnelle se remplit même pour des photos arrivées après le selfie (via le polling de `/api/guests/photos`).
 
 ## État actuel
 
 - **J1 terminé** : squelette Next.js + DA (thème clair/sombre auto + pilule manuelle, polices, motif pagne, animations cascade) + page d'accueil "KLICHÉ", logo Rocket Corporation recoloré en or via masque CSS. Vérifié en local (desktop + mobile), lint et typecheck propres.
 - **J2 terminé** : schéma Supabase complet appliqué (SQL Editor, pas de CLI liée), `.env.local` configuré (clés Supabase + AWS pour plus tard). `/admin` crée un événement et génère un code court. `/e/[code]` affiche l'accueil (+ lien galerie publique si activée). `/e/[code]/consentement` enregistre le consentement (ligne `guests`, cookie `kliche_guest_session` 30 jours) et redirige vers un stub `/selfie`. Testé de bout en bout en live (création → consentement → vérif DB), événement de test supprimé après coup.
 - **J3 terminé** : buckets Supabase Storage créés (`photos-hd` privé, `photos-preview` public). `/studio` (dropzone multi-fichiers, progression par fichier via XHR, compteurs envoyées/traitées/livrées — "livrées" reste à 0 tant que le matching Rekognition n'existe pas). Route `/api/photos/upload` : sharp génère la version HD (max 3000px) et l'aperçu (max 1600px, filigrane diagonal "KLICHÉ" + cadre sponsor en bas), upload vers les deux buckets, insère la ligne `photos`. `/e/[code]/galerie` affiche les vraies photos en grille. Testé de bout en bout en live (upload API → vérif visuelle du filigrane → galerie), données de test supprimées après coup.
-- Connu non bloquant : studio sans auth (comme admin), pas encore d'indexation Rekognition sur les photos uploadées (arrive en J4 avec le matching selfie), stub `/selfie` toujours en place.
-- Toujours pas de remote GitHub connecté (prévu J6). Repo local, commits jusqu'à J3.
-- Prochaine étape : **J4** — capture selfie invité (getUserMedia), Collection Rekognition par événement, IndexFaces à l'upload photographe, SearchFacesByImage au selfie invité, galerie personnelle temps réel.
+- **J4 terminé** : Collection Rekognition par événement (créée dans `createEvent`). `/api/photos/upload` indexe désormais les visages de chaque photo (IndexFaces) et tente un rattachement auto aux invités déjà enregistrés (SearchFaces). `/e/[code]/selfie` : vrai viseur caméra (getUserMedia, viseur ovale + halo doré, miroir), capture → `/api/guests/selfie` (IndexFaces + SearchFacesByImage, seuil 85 %) → galerie personnelle qui poll `/api/guests/photos` toutes les 5 s (Realtime pas branché, polling seulement). Si l'invité a déjà un selfie enregistré, il retombe direct sur sa galerie en revisitant la page.
+  - Testé en live : câblage AWS confirmé (création/suppression de collection réussies), appel IndexFaces confirmé sans crash (photo sans visage → 0 `photo_faces`, statut `ready` quand même), écran caméra vérifié visuellement (erreur d'accès gérée proprement, aucune caméra dans ce navigateur sandbox). **Non testé** : succès réel d'un matching visage↔visage (génération d'image indisponible — quota Nano Banana épuisé ce jour-là, pas de source de visage de test) — à valider par l'utilisateur avec une vraie photo/webcam en dev local.
+- Connu non bloquant : studio/admin sans auth, "livrées" toujours à 0 dans `/studio` (pas encore branché sur les vrais matches), pas de visionneuse plein écran / partage WhatsApp (prévu J5).
+- Toujours pas de remote GitHub connecté (prévu J6). Repo local, commits jusqu'à J4.
+- Prochaine étape : **J5** — partage WhatsApp (liens wa.me), QR code événement, tableau de bord live organisateur, rapport sponsor imprimable.

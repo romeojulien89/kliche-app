@@ -1,7 +1,72 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { IndexFacesCommand, SearchFacesCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { processPhoto } from "@/lib/watermark";
+import {
+  createRekognitionClient,
+  collectionIdForEvent,
+  externalIdForPhoto,
+  guestIdFromExternalId,
+} from "@/lib/rekognition";
+
+type SupabaseAdmin = ReturnType<typeof createAdminClient>;
+
+async function indexAndMatchFaces(
+  supabase: SupabaseAdmin,
+  eventId: string,
+  photoId: string,
+  hdImage: Buffer,
+) {
+  const rekognition = createRekognitionClient();
+  const collectionId = collectionIdForEvent(eventId);
+
+  const indexResult = await rekognition.send(
+    new IndexFacesCommand({
+      CollectionId: collectionId,
+      Image: { Bytes: hdImage },
+      ExternalImageId: externalIdForPhoto(photoId),
+      MaxFaces: 15,
+      QualityFilter: "AUTO",
+    }),
+  );
+
+  const faceIds = (indexResult.FaceRecords ?? [])
+    .map((record) => record.Face?.FaceId)
+    .filter((id): id is string => !!id);
+
+  if (faceIds.length === 0) return;
+
+  await supabase
+    .from("photo_faces")
+    .insert(faceIds.map((faceId) => ({ photo_id: photoId, face_id: faceId })));
+
+  // Rattachement automatique aux invités déjà enregistrés (selfie déjà indexé côté guest-*)
+  for (const faceId of faceIds) {
+    const search = await rekognition.send(
+      new SearchFacesCommand({
+        CollectionId: collectionId,
+        FaceId: faceId,
+        FaceMatchThreshold: 85,
+        MaxFaces: 5,
+      }),
+    );
+
+    const guestMatch = (search.FaceMatches ?? [])
+      .map((m) => ({
+        guestId: guestIdFromExternalId(m.Face?.ExternalImageId ?? ""),
+        similarity: m.Similarity,
+      }))
+      .find((m) => m.guestId);
+
+    if (guestMatch?.guestId) {
+      await supabase
+        .from("photo_faces")
+        .update({ guest_id: guestMatch.guestId, similarity: guestMatch.similarity })
+        .eq("face_id", faceId);
+    }
+  }
+}
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -69,6 +134,14 @@ export async function POST(request: Request) {
         status: "ready",
       })
       .eq("id", photoRow.id);
+
+    try {
+      await indexAndMatchFaces(supabase, event.id, photoRow.id, hd);
+    } catch (err) {
+      // Non bloquant : la photo est déjà livrée dans les galeries publiques/HD même si
+      // l'indexation faciale échoue (rattachement invité manqué pour cette photo).
+      console.error("[photos/upload] indexAndMatchFaces", err);
+    }
 
     const {
       data: { publicUrl },

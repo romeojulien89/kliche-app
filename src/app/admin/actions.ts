@@ -1,7 +1,9 @@
 "use server";
 
+import { CreateCollectionCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateEventCode } from "@/lib/event-code";
+import { createRekognitionClient, collectionIdForEvent } from "@/lib/rekognition";
 
 export type CreateEventState = {
   error?: string;
@@ -27,19 +29,34 @@ export async function createEvent(
   const supabase = createAdminClient();
   const code = generateEventCode();
 
-  const { error } = await supabase.from("events").insert({
-    code,
-    name,
-    event_date: eventDate || null,
-    location: location || null,
-    hashtag: hashtag || null,
-    sponsor_name: sponsorName || null,
-    hd_included: hdIncluded,
-    public_gallery: publicGallery,
-  });
+  const { data: event, error } = await supabase
+    .from("events")
+    .insert({
+      code,
+      name,
+      event_date: eventDate || null,
+      location: location || null,
+      hashtag: hashtag || null,
+      sponsor_name: sponsorName || null,
+      hd_included: hdIncluded,
+      public_gallery: publicGallery,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    return { error: "Erreur lors de la création : " + error.message };
+  if (error || !event) {
+    return { error: "Erreur lors de la création : " + error?.message };
+  }
+
+  try {
+    const rekognition = createRekognitionClient();
+    await rekognition.send(
+      new CreateCollectionCommand({ CollectionId: collectionIdForEvent(event.id) }),
+    );
+  } catch (err) {
+    // Non bloquant : l'événement existe même si la collection Rekognition échoue.
+    // La reconnaissance faciale ne fonctionnera pas tant qu'elle n'est pas créée manuellement.
+    console.error("[createEvent] CreateCollection", err);
   }
 
   return { code };
