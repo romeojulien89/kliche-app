@@ -69,7 +69,21 @@ async function indexAndMatchFaces(
 }
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch (err) {
+    console.error("[photos/upload] formData parse", {
+      contentType: request.headers.get("content-type"),
+      contentLength: request.headers.get("content-length"),
+      err,
+    });
+    return NextResponse.json(
+      { error: "Fichier illisible par le serveur, réessayez." },
+      { status: 400 },
+    );
+  }
+
   const file = formData.get("file");
   const eventId = String(formData.get("event_id") ?? "");
 

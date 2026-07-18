@@ -21,7 +21,23 @@ export function UploadStudio({ events }: { events: EventOption[] }) {
     (q) => q.status === "traité" || q.status === "erreur",
   ).length;
 
-  function uploadFile(file: File, itemId: string) {
+  async function uploadFile(file: File, itemId: string) {
+    // Safari envoie parfois un corps vide avec un objet File tel quel (notamment pour des
+    // photos iCloud pas encore totalement téléchargées localement). Lire le fichier en mémoire
+    // avant de construire le FormData force le téléchargement complet et évite le bug.
+    let bytes: ArrayBuffer;
+    try {
+      bytes = await file.arrayBuffer();
+    } catch {
+      setQueue((q) =>
+        q.map((item) =>
+          item.id === itemId ? { ...item, status: "erreur" } : item,
+        ),
+      );
+      return;
+    }
+    const blob = new Blob([bytes], { type: file.type || "image/jpeg" });
+
     return new Promise<void>((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/photos/upload");
@@ -58,7 +74,7 @@ export function UploadStudio({ events }: { events: EventOption[] }) {
       };
 
       const formData = new FormData();
-      formData.set("file", file);
+      formData.set("file", blob, file.name);
       formData.set("event_id", eventId);
       xhr.send(formData);
     });
