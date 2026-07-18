@@ -19,7 +19,7 @@ export default async function SelfiePage({
   const supabase = createAdminClient();
   const { data: guest } = await supabase
     .from("guests")
-    .select("selfie_face_id")
+    .select("selfie_face_id, event_id")
     .eq("session_token", sessionToken)
     .maybeSingle();
 
@@ -27,5 +27,17 @@ export default async function SelfiePage({
     redirect(`/e/${code}/consentement`);
   }
 
-  return <SelfieCapture alreadyCaptured={!!guest.selfie_face_id} />;
+  const { data: event } = await supabase
+    .from("events")
+    .select("hashtag, hd_included")
+    .eq("id", guest.event_id)
+    .maybeSingle();
+
+  return (
+    <SelfieCapture
+      alreadyCaptured={!!guest.selfie_face_id}
+      hashtag={event?.hashtag ?? null}
+      hdIncluded={event?.hd_included ?? false}
+    />
+  );
 }

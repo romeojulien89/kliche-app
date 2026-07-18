@@ -1,17 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { PhotoGrid } from "../photo-grid";
+import type { ViewerPhoto } from "../photo-viewer";
 
 type Phase = "camera" | "analyse" | "erreur" | "galerie";
-type Photo = { id: string; url: string };
 
 const POLL_INTERVAL_MS = 5000;
 
-export function SelfieCapture({ alreadyCaptured }: { alreadyCaptured: boolean }) {
+export function SelfieCapture({
+  alreadyCaptured,
+  hashtag,
+  hdIncluded,
+}: {
+  alreadyCaptured: boolean;
+  hashtag: string | null;
+  hdIncluded: boolean;
+}) {
   const [phase, setPhase] = useState<Phase>(alreadyCaptured ? "galerie" : "camera");
   const [error, setError] = useState<string | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photos, setPhotos] = useState<ViewerPhoto[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -174,21 +182,13 @@ export function SelfieCapture({ alreadyCaptured }: { alreadyCaptured: boolean })
       </p>
 
       {photos.length > 0 ? (
-        <div className="mx-auto mt-8 grid max-w-md grid-cols-2 gap-2">
-          {photos.map((photo) => (
-            <div
-              key={photo.id}
-              className="cascade relative aspect-square overflow-hidden rounded-md bg-surface"
-            >
-              <Image
-                src={photo.url}
-                alt=""
-                fill
-                sizes="50vw"
-                className="object-cover"
-              />
-            </div>
-          ))}
+        <div className="mx-auto mt-8 max-w-md">
+          <PhotoGrid
+            photos={photos}
+            hashtag={hashtag}
+            hdIncluded={hdIncluded}
+            columnsClassName="grid-cols-2"
+          />
         </div>
       ) : null}
     </main>

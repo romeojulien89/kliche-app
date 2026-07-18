@@ -27,7 +27,7 @@ export function ThemeToggle() {
     <div
       role="group"
       aria-label="Choix du thème"
-      className="fixed top-4 right-4 z-50 flex items-center gap-0.5 rounded-full border border-border bg-surface/80 p-1 shadow-sm backdrop-blur-sm"
+      className="fixed top-4 right-4 z-50 flex items-center gap-0.5 rounded-full border border-border bg-surface/80 p-1 shadow-sm backdrop-blur-sm print:hidden"
       suppressHydrationWarning
     >
       {OPTIONS.map((option) => (

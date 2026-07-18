@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PhotoGrid } from "../photo-grid";
 
 export default async function PublicGalleryPage({
   params,
@@ -13,7 +13,7 @@ export default async function PublicGalleryPage({
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, name, public_gallery")
+    .select("id, name, public_gallery, hashtag, hd_included")
     .eq("code", code.toUpperCase())
     .maybeSingle();
 
@@ -66,21 +66,12 @@ export default async function PublicGalleryPage({
           envoyer.
         </p>
       ) : (
-        <div className="mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-2 sm:grid-cols-3">
-          {withUrls.map((photo) => (
-            <div
-              key={photo.id}
-              className="relative aspect-square overflow-hidden rounded-md bg-surface"
-            >
-              <Image
-                src={photo.url}
-                alt=""
-                fill
-                sizes="(max-width: 640px) 50vw, 33vw"
-                className="object-cover"
-              />
-            </div>
-          ))}
+        <div className="mx-auto mt-8 max-w-3xl">
+          <PhotoGrid
+            photos={withUrls}
+            hashtag={event.hashtag}
+            hdIncluded={event.hd_included}
+          />
         </div>
       )}
     </main>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { createEvent, type CreateEventState } from "./actions";
 
 const initialState: CreateEventState = {};
@@ -29,6 +30,12 @@ export function CreateEventForm() {
             /e/{state.code}
           </a>
         </p>
+        <Link
+          href={`/admin/${state.code}`}
+          className="mt-4 inline-block rounded-full bg-accent px-5 py-2.5 font-sans text-sm font-medium text-accent-foreground"
+        >
+          Voir le tableau de bord
+        </Link>
       </div>
     );
   }
