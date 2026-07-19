@@ -127,13 +127,19 @@ export async function POST(request: Request) {
     const hdPath = `${baseName}.jpg`;
     const previewPath = `${baseName}.jpg`;
 
+    // Un Buffer Node.js passé tel quel comme corps de requête n'est pas fiable en
+    // environnement serverless (corruption binaire constatée sur Vercel) — un Blob
+    // explicite force storage-js sur un chemin d'upload multipart, plus robuste.
+    const hdBlob = new Blob([new Uint8Array(hd)], { type: "image/jpeg" });
+    const previewBlob = new Blob([new Uint8Array(preview)], { type: "image/jpeg" });
+
     const [hdUpload, previewUpload] = await Promise.all([
       supabase.storage
         .from("photos-hd")
-        .upload(hdPath, hd, { contentType: "image/jpeg" }),
+        .upload(hdPath, hdBlob, { contentType: "image/jpeg" }),
       supabase.storage
         .from("photos-preview")
-        .upload(previewPath, preview, { contentType: "image/jpeg" }),
+        .upload(previewPath, previewBlob, { contentType: "image/jpeg" }),
     ]);
 
     if (hdUpload.error || previewUpload.error) {
