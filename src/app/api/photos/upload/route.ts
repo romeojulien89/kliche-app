@@ -24,7 +24,11 @@ async function indexAndMatchFaces(
   const indexResult = await rekognition.send(
     new IndexFacesCommand({
       CollectionId: collectionId,
-      Image: { Bytes: hdImage },
+      // Copie défensive : le buffer produit par sharp peut être soutenu par un
+      // SharedArrayBuffer en environnement Vercel, que le SDK AWS rejette
+      // ("input argument must be ArrayBuffer"). Uint8Array.from() force une
+      // copie sur un ArrayBuffer standard.
+      Image: { Bytes: Uint8Array.from(hdImage) },
       ExternalImageId: externalIdForPhoto(photoId),
       MaxFaces: 15,
       QualityFilter: "AUTO",

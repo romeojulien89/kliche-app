@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   const rekognition = createRekognitionClient();
   const collectionId = collectionIdForEvent(guest.event_id);
-  const bytes = Buffer.from(await file.arrayBuffer());
+  const bytes = Uint8Array.from(Buffer.from(await file.arrayBuffer()));
 
   let indexResult;
   try {
