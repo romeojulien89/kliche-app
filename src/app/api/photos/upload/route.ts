@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { randomUUID } from "crypto";
 import { IndexFacesCommand, SearchFacesCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +9,9 @@ import {
   externalIdForPhoto,
   guestIdFromExternalId,
 } from "@/lib/rekognition";
+
+// Laisse le temps à l'indexation faciale en arrière-plan (after()) de se terminer.
+export const maxDuration = 60;
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 
@@ -159,13 +162,16 @@ export async function POST(request: Request) {
       })
       .eq("id", photoRow.id);
 
-    try {
-      await indexAndMatchFaces(supabase, event.id, photoRow.id, hd);
-    } catch (err) {
-      // Non bloquant : la photo est déjà livrée dans les galeries publiques/HD même si
-      // l'indexation faciale échoue (rattachement invité manqué pour cette photo).
-      console.error("[photos/upload] indexAndMatchFaces", err);
-    }
+    // Indexation faciale différée : la réponse part dès que la photo est stockée,
+    // Rekognition (IndexFaces + rattachement invités) continue après coup sans
+    // bloquer le photographe sur /studio.
+    after(async () => {
+      try {
+        await indexAndMatchFaces(supabase, event.id, photoRow.id, hd);
+      } catch (err) {
+        console.error("[photos/upload] indexAndMatchFaces", err);
+      }
+    });
 
     const {
       data: { publicUrl },
