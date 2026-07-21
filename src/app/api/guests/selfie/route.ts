@@ -8,6 +8,7 @@ import {
   externalIdForGuest,
   photoIdFromExternalId,
 } from "@/lib/rekognition";
+import { broadcast, eventChannelName } from "@/lib/realtime";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
@@ -92,6 +93,8 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[guests/selfie] SearchFacesByImage", err);
   }
+
+  await broadcast(eventChannelName(guest.event_id), "activity").catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

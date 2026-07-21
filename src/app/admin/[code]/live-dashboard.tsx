@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { EventStats } from "@/lib/event-stats";
+import { createClient } from "@/lib/supabase/client";
+import { eventChannelName } from "@/lib/realtime";
 
-const POLL_INTERVAL_MS = 8000;
+// Filet de sécurité si un message Realtime est manqué (reconnexion, etc.).
+const FALLBACK_POLL_INTERVAL_MS = 30000;
 
 function formatDelay(ms: number | null): string {
   if (ms === null) return "—";
@@ -22,30 +25,41 @@ function formatTime(iso: string): string {
 
 export function LiveDashboard({
   code,
+  eventId,
   initialStats,
 }: {
   code: string;
+  eventId: string;
   initialStats: EventStats;
 }) {
   const [stats, setStats] = useState(initialStats);
 
   useEffect(() => {
     let cancelled = false;
-    async function poll() {
+    async function refresh() {
       try {
         const res = await fetch(`/api/admin/events/${code}/stats`);
         const data = await res.json();
         if (!cancelled && res.ok) setStats(data);
       } catch {
-        // silencieux : on réessaiera au prochain intervalle
+        // silencieux : le prochain signal Realtime ou le filet de secours réessaiera
       }
     }
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(eventChannelName(eventId))
+      .on("broadcast", { event: "activity" }, () => refresh())
+      .subscribe();
+
+    const interval = setInterval(refresh, FALLBACK_POLL_INTERVAL_MS);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      supabase.removeChannel(channel);
     };
-  }, [code]);
+  }, [code, eventId]);
 
   const cards = [
     { label: "Photos capturées", value: stats.photosCount },

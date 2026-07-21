@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { broadcast, eventChannelName } from "@/lib/realtime";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -33,6 +34,8 @@ export async function recordConsent(code: string) {
   if (error || !guest) {
     throw new Error("Erreur lors de l'enregistrement du consentement.");
   }
+
+  broadcast(eventChannelName(event.id), "activity").catch(() => {});
 
   const cookieStore = await cookies();
   cookieStore.set("kliche_guest_session", guest.session_token, {

@@ -9,6 +9,7 @@ import {
   externalIdForPhoto,
   guestIdFromExternalId,
 } from "@/lib/rekognition";
+import { broadcast, eventChannelName, guestChannelName } from "@/lib/realtime";
 
 // Laisse le temps à l'indexation faciale en arrière-plan (after()) de se terminer.
 export const maxDuration = 60;
@@ -71,6 +72,8 @@ async function indexAndMatchFaces(
         .from("photo_faces")
         .update({ guest_id: guestMatch.guestId, similarity: guestMatch.similarity })
         .eq("face_id", faceId);
+
+      await broadcast(guestChannelName(guestMatch.guestId), "new-match").catch(() => {});
     }
   }
 }
@@ -164,8 +167,11 @@ export async function POST(request: Request) {
 
     // Indexation faciale différée : la réponse part dès que la photo est stockée,
     // Rekognition (IndexFaces + rattachement invités) continue après coup sans
-    // bloquer le photographe sur /studio.
+    // bloquer le photographe sur /studio. Les diffusions Realtime (fire-and-forget)
+    // doivent aussi passer par after() : Vercel ne garantit leur exécution que via
+    // waitUntil, jamais après le retour de la réponse HTTP.
     after(async () => {
+      await broadcast(eventChannelName(event.id), "activity").catch(() => {});
       try {
         await indexAndMatchFaces(supabase, event.id, photoRow.id, hd);
       } catch (err) {

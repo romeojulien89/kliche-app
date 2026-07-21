@@ -19,7 +19,7 @@ export default async function SelfiePage({
   const supabase = createAdminClient();
   const { data: guest } = await supabase
     .from("guests")
-    .select("selfie_face_id, event_id")
+    .select("id, selfie_face_id, event_id")
     .eq("session_token", sessionToken)
     .maybeSingle();
 
@@ -35,6 +35,7 @@ export default async function SelfiePage({
 
   return (
     <SelfieCapture
+      guestId={guest.id}
       alreadyCaptured={!!guest.selfie_face_id}
       hashtag={event?.hashtag ?? null}
       hdIncluded={event?.hd_included ?? false}

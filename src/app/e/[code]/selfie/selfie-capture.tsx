@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { guestChannelName } from "@/lib/realtime";
 import { PhotoGrid } from "../photo-grid";
 import type { ViewerPhoto } from "../photo-viewer";
 
 type Phase = "camera" | "analyse" | "erreur" | "galerie";
 
-const POLL_INTERVAL_MS = 5000;
+// Filet de sécurité si un message Realtime est manqué (reconnexion, etc.).
+const FALLBACK_POLL_INTERVAL_MS = 60000;
 
 export function SelfieCapture({
+  guestId,
   alreadyCaptured,
   hashtag,
   hdIncluded,
 }: {
+  guestId: string;
   alreadyCaptured: boolean;
   hashtag: string | null;
   hdIncluded: boolean;
@@ -55,23 +60,32 @@ export function SelfieCapture({
     if (phase !== "galerie") return;
 
     let cancelled = false;
-    async function poll() {
+    async function refresh() {
       try {
         const res = await fetch("/api/guests/photos");
         const data = await res.json();
         if (!cancelled && Array.isArray(data.photos)) setPhotos(data.photos);
       } catch {
-        // silencieux : on réessaiera au prochain intervalle
+        // silencieux : le prochain signal Realtime ou le filet de secours réessaiera
       }
     }
 
-    poll();
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    refresh();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(guestChannelName(guestId))
+      .on("broadcast", { event: "new-match" }, () => refresh())
+      .subscribe();
+
+    const interval = setInterval(refresh, FALLBACK_POLL_INTERVAL_MS);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      supabase.removeChannel(channel);
     };
-  }, [phase]);
+  }, [phase, guestId]);
 
   function capture() {
     const video = videoRef.current;

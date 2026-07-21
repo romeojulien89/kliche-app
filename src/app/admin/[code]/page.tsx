@@ -51,7 +51,7 @@ export default async function EventDashboardPage({
         </div>
       </div>
 
-      <LiveDashboard code={event.code} initialStats={initialStats} />
+      <LiveDashboard code={event.code} eventId={event.id} initialStats={initialStats} />
     </main>
   );
 }
