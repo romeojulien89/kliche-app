@@ -10,7 +10,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-end gap-3 border-b border-border px-6 py-3">
+      <div className="flex items-center gap-3 border-b border-border px-6 py-3">
         <span className="font-sans text-xs text-foreground/50">{name}</span>
         <form action={logout}>
           <button
