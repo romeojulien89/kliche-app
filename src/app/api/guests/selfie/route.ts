@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { cookies } from "next/headers";
 import { IndexFacesCommand, SearchFacesByImageCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -54,6 +55,10 @@ export async function POST(request: Request) {
     );
   } catch (err) {
     console.error("[guests/selfie] IndexFaces", err);
+    Sentry.captureException(err, {
+      tags: { route: "guests/selfie", stage: "IndexFaces" },
+      extra: { guestId: guest.id },
+    });
     return NextResponse.json(
       { error: "Erreur lors de l'analyse du selfie, réessayez." },
       { status: 500 },
@@ -93,6 +98,10 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error("[guests/selfie] SearchFacesByImage", err);
+    Sentry.captureException(err, {
+      tags: { route: "guests/selfie", stage: "SearchFacesByImage" },
+      extra: { guestId: guest.id },
+    });
   }
 
   await broadcast(eventChannelName(guest.event_id), "activity").catch(() => {});

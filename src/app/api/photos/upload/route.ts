@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { randomUUID } from "crypto";
 import { IndexFacesCommand, SearchFacesCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -89,6 +90,9 @@ export async function POST(request: Request) {
       contentType: request.headers.get("content-type"),
       contentLength: request.headers.get("content-length"),
       err,
+    });
+    Sentry.captureException(err, {
+      tags: { route: "photos/upload", stage: "formData" },
     });
     return NextResponse.json(
       { error: "Fichier illisible par le serveur, réessayez." },
@@ -193,6 +197,10 @@ export async function POST(request: Request) {
         await indexAndMatchFaces(supabase, event.id, photoRow.id, hd);
       } catch (err) {
         console.error("[photos/upload] indexAndMatchFaces", err);
+        Sentry.captureException(err, {
+          tags: { route: "photos/upload", stage: "indexAndMatchFaces" },
+          extra: { eventId: event.id, photoId: photoRow.id },
+        });
       }
     });
 
@@ -203,6 +211,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: photoRow.id, previewUrl: publicUrl });
   } catch (err) {
     console.error("[photos/upload]", err);
+    Sentry.captureException(err, {
+      tags: { route: "photos/upload", stage: "processing" },
+      extra: { eventId: event.id, photoId: photoRow.id },
+    });
     await supabase
       .from("photos")
       .update({ status: "error" })
