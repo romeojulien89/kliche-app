@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { randomUUID } from "crypto";
 import { IndexFacesCommand, SearchFacesCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { processPhoto } from "@/lib/watermark";
 import {
   createRekognitionClient,
@@ -117,9 +118,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Événement introuvable." }, { status: 404 });
   }
 
+  const sessionClient = await createClient();
+  const {
+    data: { user },
+  } = await sessionClient.auth.getUser();
+
+  let photographerId: string | null = null;
+  if (user) {
+    const { data: photographer } = await supabase
+      .from("photographers")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+    photographerId = photographer?.id ?? null;
+  }
+
   const { data: photoRow, error: insertError } = await supabase
     .from("photos")
-    .insert({ event_id: event.id, status: "processing" })
+    .insert({ event_id: event.id, photographer_id: photographerId, status: "processing" })
     .select("id")
     .single();
 

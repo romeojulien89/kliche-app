@@ -14,7 +14,7 @@ export default async function StudioPage() {
         Studio photographe
       </h1>
       <p className="mt-1 mb-6 font-sans text-sm text-foreground/60">
-        Espace photographe — non protégé pour l&apos;instant.
+        Espace photographe.
       </p>
       <UploadStudio events={events ?? []} />
     </main>

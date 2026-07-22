@@ -2,6 +2,7 @@
 
 import { CreateCollectionCommand } from "@aws-sdk/client-rekognition";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { generateEventCode } from "@/lib/event-code";
 import { createRekognitionClient, collectionIdForEvent } from "@/lib/rekognition";
 
@@ -26,6 +27,11 @@ export async function createEvent(
     return { error: "Le nom de l'événement est obligatoire." };
   }
 
+  const sessionClient = await createClient();
+  const {
+    data: { user },
+  } = await sessionClient.auth.getUser();
+
   const supabase = createAdminClient();
   const code = generateEventCode();
 
@@ -40,6 +46,7 @@ export async function createEvent(
       sponsor_name: sponsorName || null,
       hd_included: hdIncluded,
       public_gallery: publicGallery,
+      created_by: user?.id ?? null,
     })
     .select("id")
     .single();
