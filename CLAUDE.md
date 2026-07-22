@@ -23,20 +23,26 @@ supabase/migrations/0001_init.sql  # schéma complet (events, guests, photos, ph
                                      # photographers, event_photographers, shares, admins) + RLS
                                      # exécuté à la main dans Supabase SQL Editor (pas de CLI liée)
 src/
+  proxy.ts             # (ex-middleware, renommé en Next 16) rafraîchit la session Supabase,
+                        # redirige vers /login de façon optimiste sur /admin, /studio
   app/
     layout.tsx        # polices (Playfair Display + Inter), script d'init thème, motif pagne
     page.tsx           # page d'accueil
     globals.css         # tokens couleur clair/sombre, motif pagne, animations cascade/halo
-    admin/               # création d'événement (non protégé — pas d'auth admin pour l'instant)
+    login/               # connexion admin/photographe (Supabase Auth email+mdp)
+    admin/               # layout.tsx protège tout /admin/* (requireAdmin) ; création d'événement,
                           # crée aussi la Collection Rekognition de l'événement (CreateCollectionCommand)
+      photographes/         # l'admin crée des comptes photographe (email + mdp temporaire généré)
     e/[code]/             # accueil invité, consentement, galerie publique, capture selfie + galerie perso
-    studio/                # upload photographe (non protégé), dropzone + file d'attente
+    studio/                # layout.tsx protège tout /studio/* (requireStudioAccess) ; upload photographe
     api/photos/upload/      # Route Handler : processPhoto (sharp) + stockage + IndexFaces + rattachement auto
     api/guests/selfie/       # Route Handler : IndexFaces du selfie + SearchFacesByImage → lie photo_faces.guest_id
     api/guests/photos/        # Route Handler : GET, renvoie les photos déjà matchées pour l'invité courant (polling)
   components/
     theme-toggle.tsx    # pilule Auto/Clair/Sombre (haut droit), persistée localStorage
   lib/
+    auth.ts               # requireAdmin()/requireStudioAccess() — vraie autorisation (table admins/photographers),
+                           # appelés depuis les layouts server-side, pas depuis proxy.ts
     theme.ts             # logique thème (auto = 6h-18h clair, sinon sombre) + script d'init inline
     event-code.ts          # génère le code court (6 car., sans O/0/I/1) affiché sur le QR
     watermark.ts            # sharp : redimensionnement HD/preview + filigrane KLICHÉ + cadre sponsor (SVG composité)
@@ -46,6 +52,7 @@ src/
     realtime-channels.ts         # noms de canaux (guest-<id>, event-<id>) — PAS server-only, utilisable côté client
     supabase/
       client.ts             # client navigateur (clé publishable)
+      proxy.ts               # updateSession() — helper appelé par src/proxy.ts
       server.ts               # client Server Component (cookies, RLS via anon/publishable)
       admin.ts                 # client service_role (server-only, contourne RLS) — mutations
                                  # invité/photographe qui n'ont pas de session Supabase Auth,
@@ -103,5 +110,10 @@ src/
   - **Piège qui a cassé le build** : `lib/realtime.ts` (`server-only`, dépend de `createAdminClient`) exportait aussi `guestChannelName`/`eventChannelName`, importés depuis des Client Components (`selfie-capture.tsx`, `live-dashboard.tsx`) pour construire les noms de canaux côté client. `server-only` interdit d'importer **quoi que ce soit** d'un tel module depuis du code client, même les exports qui n'en dépendent pas — Turbopack fait échouer le build entier. Fix : les helpers de nommage (sans dépendance serveur) vivent dans `lib/realtime-channels.ts`, séparé de `lib/realtime.ts` qui ne garde que `broadcast()`. Si une future fonction serveur doit être appelée par un composant partagé client/serveur, séparer systématiquement ainsi plutôt que de mélanger dans un seul fichier.
   - Cette erreur n'apparaît qu'au **build Next.js/Turbopack complet** (`npm run build`), pas à `tsc --noEmit` ni `eslint` — désormais je lance aussi `npm run build` en local avant de pousser tout changement qui touche à la frontière Client/Server Component, pour l'attraper avant un cycle de déploiement Vercel perdu.
   - Fausse piste explorée en cours de route : un `engines.node: "22.x"` avait été ajouté en pensant que Realtime échouait faute de WebSocket natif (reproduit avec succès en local sur Node 20, qui n'a pas de WebSocket natif) — mais Vercel utilise déjà Node 24.x par défaut pour ce projet (qui l'a), donc ce n'était pas la cause. Retiré une fois le vrai bug (ci-dessus) identifié et corrigé ; confirmé par un test Realtime cross-client réel en prod (un script d'écoute séparé reçoit bien la diffusion déclenchée par `/api/shares`).
-- Connu non bloquant : studio/admin toujours sans auth, "livrées" dans `/studio` toujours à 0 (compteur non branché sur le matching réel, et de toute façon asynchrone maintenant), pas de notification WhatsApp Business API ni presets colorimétriques (Phase 2 du produit, hors scope V1/MVP), pas de monitoring d'erreurs (Sentry ou équivalent) — chaque bug prod nécessite de demander à l'utilisateur de copier les logs Vercel à la main.
-- Pistes identifiées pour la suite (proposées à l'utilisateur, pas encore démarrées) : auth admin/photographe, tâche de purge automatique à J+30 (`guests.purge_at` existe en base mais rien ne l'exécute), monitoring d'erreurs.
+- **Optimisation post-J6, auth admin/photographe** : `/admin` et `/studio` protégés par Supabase Auth. `src/proxy.ts` (Next 16 a renommé "middleware" en "proxy", même fonctionnement) rafraîchit la session et redirige vers `/login` de façon optimiste (présence d'un utilisateur) ; le vrai contrôle d'accès (appartenance à `admins`/`photographers`, via `lib/auth.ts` `requireAdmin()`/`requireStudioAccess()`) est fait dans les layouts server-side — recommandation officielle Next.js (le proxy ne doit pas être la seule couche d'autorisation).
+  - Compte admin fondateur créé directement via `supabase.auth.admin.createUser()` (clé service_role, pas de dashboard Supabase nécessaire) + ligne `admins` correspondante.
+  - `/admin/photographes` : l'admin crée des comptes photographe (email + mot de passe temporaire généré, transmis manuellement — pas d'envoi d'email automatique, hors scope pour l'instant).
+  - `events.created_by` et `photos.photographer_id` sont maintenant renseignés depuis la session authentifiée (avant : toujours `null`).
+  - Piège : la barre "nom + Déconnexion" ajoutée dans `admin/layout.tsx`/`studio/layout.tsx` était alignée à droite (`justify-end`) — pile sous la pilule de thème (`fixed top-4 right-4`), donc invisible/cachée. Alignée à gauche à la place. Penser à la pilule de thème (coin haut-droit, fixed, z-50) avant de placer un nouvel élément dans cette zone.
+- Connu non bloquant : "livrées" dans `/studio` toujours à 0 (compteur non branché sur le matching réel, et de toute façon asynchrone maintenant), pas de notification WhatsApp Business API ni presets colorimétriques (Phase 2 du produit, hors scope V1/MVP), pas de monitoring d'erreurs (Sentry ou équivalent) — chaque bug prod nécessite de demander à l'utilisateur de copier les logs Vercel à la main, pas d'interface pour changer son mot de passe (à faire via Supabase Dashboard directement pour l'instant).
+- Pistes identifiées pour la suite (proposées à l'utilisateur, pas encore démarrées) : tâche de purge automatique à J+30 (`guests.purge_at` existe en base mais rien ne l'exécute), monitoring d'erreurs.
