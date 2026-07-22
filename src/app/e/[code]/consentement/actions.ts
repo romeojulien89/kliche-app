@@ -3,7 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { broadcast, eventChannelName } from "@/lib/realtime";
+import { broadcast } from "@/lib/realtime";
+import { eventChannelName } from "@/lib/realtime-channels";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 

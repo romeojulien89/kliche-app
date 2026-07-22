@@ -9,7 +9,8 @@ import {
   externalIdForPhoto,
   guestIdFromExternalId,
 } from "@/lib/rekognition";
-import { broadcast, eventChannelName, guestChannelName } from "@/lib/realtime";
+import { broadcast } from "@/lib/realtime";
+import { eventChannelName, guestChannelName } from "@/lib/realtime-channels";
 
 // Laisse le temps à l'indexation faciale en arrière-plan (after()) de se terminer.
 export const maxDuration = 60;

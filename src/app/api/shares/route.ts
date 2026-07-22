@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { broadcast, eventChannelName } from "@/lib/realtime";
+import { broadcast } from "@/lib/realtime";
+import { eventChannelName } from "@/lib/realtime-channels";
 
 export async function POST(request: Request) {
   const { photo_id: photoId } = await request.json();

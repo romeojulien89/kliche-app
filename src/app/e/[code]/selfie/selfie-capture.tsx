@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { guestChannelName } from "@/lib/realtime";
+import { guestChannelName } from "@/lib/realtime-channels";
 import { PhotoGrid } from "../photo-grid";
 import type { ViewerPhoto } from "../photo-viewer";
 

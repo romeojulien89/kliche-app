@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { EventStats } from "@/lib/event-stats";
 import { createClient } from "@/lib/supabase/client";
-import { eventChannelName } from "@/lib/realtime";
+import { eventChannelName } from "@/lib/realtime-channels";
 
 // Filet de sécurité si un message Realtime est manqué (reconnexion, etc.).
 const FALLBACK_POLL_INTERVAL_MS = 30000;

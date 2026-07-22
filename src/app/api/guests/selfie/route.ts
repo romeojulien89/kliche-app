@@ -8,7 +8,8 @@ import {
   externalIdForGuest,
   photoIdFromExternalId,
 } from "@/lib/rekognition";
-import { broadcast, eventChannelName } from "@/lib/realtime";
+import { broadcast } from "@/lib/realtime";
+import { eventChannelName } from "@/lib/realtime-channels";
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
