@@ -94,6 +94,7 @@ export async function POST(request: Request) {
     Sentry.captureException(err, {
       tags: { route: "photos/upload", stage: "formData" },
     });
+    await Sentry.flush(2000);
     return NextResponse.json(
       { error: "Fichier illisible par le serveur, réessayez." },
       { status: 400 },
@@ -201,6 +202,7 @@ export async function POST(request: Request) {
           tags: { route: "photos/upload", stage: "indexAndMatchFaces" },
           extra: { eventId: event.id, photoId: photoRow.id },
         });
+        await Sentry.flush(2000);
       }
     });
 
@@ -215,6 +217,7 @@ export async function POST(request: Request) {
       tags: { route: "photos/upload", stage: "processing" },
       extra: { eventId: event.id, photoId: photoRow.id },
     });
+    await Sentry.flush(2000);
     await supabase
       .from("photos")
       .update({ status: "error" })

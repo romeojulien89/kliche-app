@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       tags: { route: "guests/selfie", stage: "IndexFaces" },
       extra: { guestId: guest.id },
     });
+    await Sentry.flush(2000);
     return NextResponse.json(
       { error: "Erreur lors de l'analyse du selfie, réessayez." },
       { status: 500 },
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
       tags: { route: "guests/selfie", stage: "SearchFacesByImage" },
       extra: { guestId: guest.id },
     });
+    await Sentry.flush(2000);
   }
 
   await broadcast(eventChannelName(guest.event_id), "activity").catch(() => {});
