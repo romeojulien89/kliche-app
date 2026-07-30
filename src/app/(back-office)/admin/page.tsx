@@ -32,16 +32,36 @@ export default async function AdminPage() {
           <h2 className="font-sans text-sm font-medium text-foreground/70">
             Événements
           </h2>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-3 flex flex-col gap-3">
             {events.map((event) => (
-              <li key={event.id}>
-                <Link
-                  href={`/admin/${event.code}`}
-                  className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 font-sans text-sm text-foreground"
-                >
+              <li
+                key={event.id}
+                className="rounded-md border border-border bg-surface px-4 py-3"
+              >
+                <div className="flex items-center justify-between font-sans text-sm text-foreground">
                   <span>{event.name}</span>
                   <span className="text-accent">{event.code}</span>
-                </Link>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href="/studio"
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground"
+                  >
+                    Studio
+                  </Link>
+                  <Link
+                    href={`/e/${event.code}`}
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground"
+                  >
+                    Selfie
+                  </Link>
+                  <Link
+                    href={`/admin/${event.code}`}
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground"
+                  >
+                    Tableau de bord
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>
