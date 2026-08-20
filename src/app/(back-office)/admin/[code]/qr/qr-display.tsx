@@ -1,17 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import QRCode from "qrcode";
 import { BackLink } from "@/components/back-link";
 
-function guestUrlFor(code: string): string {
-  if (typeof window === "undefined") return "";
-  return `${window.location.origin}/e/${code}`;
+// Même souci d'hydratation que ThemeToggle (voir lib/theme.ts) : window.location
+// n'existe pas côté serveur, donc on passe par useSyncExternalStore pour que le
+// premier rendu client corresponde au HTML serveur, sans setState dans un effet.
+function subscribeOrigin(): () => void {
+  return () => {};
+}
+
+function getServerOrigin(): string {
+  return "";
 }
 
 export function QrDisplay({ code }: { code: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [url] = useState(() => guestUrlFor(code));
+  const origin = useSyncExternalStore(
+    subscribeOrigin,
+    () => window.location.origin,
+    getServerOrigin,
+  );
+  const url = origin ? `${origin}/e/${code}` : "";
 
   useEffect(() => {
     if (canvasRef.current && url) {
