@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { BackLink } from "@/components/back-link";
 
 function guestUrlFor(code: string): string {
   if (typeof window === "undefined") return "";
@@ -36,7 +37,8 @@ export function QrDisplay({ code }: { code: string }) {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-      <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
+      <BackLink href={`/admin/${code}`} label="Retour à l'événement" className="cascade self-start" />
+      <h1 className="mt-6 font-display text-2xl font-bold text-foreground sm:text-3xl">
         {code}
       </h1>
       <p className="mt-2 font-sans text-sm text-foreground/60">{url}</p>

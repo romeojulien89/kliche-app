@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BackLink } from "@/components/back-link";
 import { AddPhotographerForm } from "./add-photographer-form";
 
 export default async function PhotographesPage() {
@@ -10,7 +11,8 @@ export default async function PhotographesPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
-      <h1 className="font-display text-2xl font-bold text-foreground">
+      <BackLink href="/admin" label="Événements" className="cascade self-start" />
+      <h1 className="mt-4 font-display text-2xl font-bold text-foreground">
         Photographes
       </h1>
       <p className="mt-1 mb-6 font-sans text-sm text-foreground/60">

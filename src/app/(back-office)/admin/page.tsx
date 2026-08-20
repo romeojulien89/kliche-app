@@ -33,10 +33,11 @@ export default async function AdminPage() {
             Événements
           </h2>
           <ul className="mt-3 flex flex-col gap-3">
-            {events.map((event) => (
+            {events.map((event, i) => (
               <li
                 key={event.id}
-                className="rounded-md border border-border bg-surface px-4 py-3"
+                style={{ animationDelay: `${i * 0.08}s` }}
+                className="cascade rounded-md border border-border bg-surface px-4 py-3 transition-shadow hover:shadow-md"
               >
                 <div className="flex items-center justify-between font-sans text-sm text-foreground">
                   <span>{event.name}</span>
@@ -44,22 +45,28 @@ export default async function AdminPage() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link
+                    href={`/admin/${event.code}`}
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground transition-colors hover:border-accent hover:text-accent"
+                  >
+                    Tableau de bord
+                  </Link>
+                  <Link
+                    href={`/admin/photos?event=${event.code}`}
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground transition-colors hover:border-accent hover:text-accent"
+                  >
+                    Photos
+                  </Link>
+                  <Link
                     href="/studio"
-                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground"
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground transition-colors hover:border-accent hover:text-accent"
                   >
                     Studio
                   </Link>
                   <Link
                     href={`/e/${event.code}`}
-                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground"
+                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground transition-colors hover:border-accent hover:text-accent"
                   >
                     Selfie
-                  </Link>
-                  <Link
-                    href={`/admin/${event.code}`}
-                    className="rounded-full border border-border px-3 py-1.5 font-sans text-xs text-foreground"
-                  >
-                    Tableau de bord
                   </Link>
                 </div>
               </li>

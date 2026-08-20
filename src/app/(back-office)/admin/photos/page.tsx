@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { BackLink } from "@/components/back-link";
+import { DeletePhotoForm } from "@/components/delete-photo-button";
 import { deletePhoto } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -42,6 +44,13 @@ export default async function PhotosPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">
+      {selectedEvent ? (
+        <BackLink
+          href={`/admin/${selectedEvent.code}`}
+          label="Retour à l'événement"
+          className="cascade mb-4"
+        />
+      ) : null}
       <h1 className="font-display text-2xl font-bold text-foreground">
         Base de photos
       </h1>
@@ -73,7 +82,7 @@ export default async function PhotosPage({
 
       {photos && photos.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {photos.map((photo) => {
+          {photos.map((photo, i) => {
             const previewUrl = photo.storage_path_preview
               ? admin.storage.from("photos-preview").getPublicUrl(photo.storage_path_preview)
                   .data.publicUrl
@@ -83,7 +92,8 @@ export default async function PhotosPage({
             return (
               <div
                 key={photo.id}
-                className="flex flex-col overflow-hidden rounded-md border border-border bg-surface"
+                style={{ animationDelay: `${Math.min(i, 12) * 0.04}s` }}
+                className="cascade flex flex-col overflow-hidden rounded-md border border-border bg-surface transition-shadow hover:shadow-md"
               >
                 <div className="aspect-square bg-border/40">
                   {previewUrl ? (
@@ -106,15 +116,7 @@ export default async function PhotosPage({
                   >
                     {STATUS_LABEL[photo.status] ?? photo.status}
                   </span>
-                  <form action={deletePhoto}>
-                    <input type="hidden" name="photoId" value={photo.id} />
-                    <button
-                      type="submit"
-                      className="mt-1 font-sans text-xs text-red-500 underline underline-offset-2"
-                    >
-                      Supprimer
-                    </button>
-                  </form>
+                  <DeletePhotoForm photoId={photo.id} action={deletePhoto} />
                 </div>
               </div>
             );

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { computeEventStats } from "@/lib/event-stats";
+import { BackLink } from "@/components/back-link";
 import { PrintButton } from "./print-button";
 
 function buildPitch(
@@ -48,7 +49,13 @@ export default async function SponsorReportPage({
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16 print:py-0">
-      <div className="flex items-center justify-between">
+      <BackLink
+        href={`/admin/${code.toUpperCase()}`}
+        label="Retour à l'événement"
+        className="cascade print:hidden"
+      />
+
+      <div className="mt-4 flex items-center justify-between print:mt-0">
         <div>
           <p className="font-sans text-xs tracking-[0.2em] text-accent uppercase">
             Rapport sponsor

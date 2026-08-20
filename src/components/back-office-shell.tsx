@@ -26,8 +26,8 @@ export function BackOfficeShell({
   return (
     <div className="flex flex-1 flex-col md:flex-row">
       <aside className="flex flex-col gap-4 border-b border-border px-4 pt-16 pb-4 md:w-56 md:border-b-0 md:border-r md:px-3 md:py-6">
-        <span className="hidden px-3 font-display text-lg font-bold text-foreground md:block">
-          Kliché
+        <span className="hidden px-3 font-display text-3xl font-bold tracking-tight text-foreground md:block">
+          Kliché<span className="text-accent">.</span>
         </span>
         <SidebarNav items={items} />
         <div className="hidden flex-col gap-1 border-t border-border pt-4 md:mt-auto md:flex">
