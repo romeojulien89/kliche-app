@@ -12,7 +12,6 @@ const nextConfig: NextConfig = {
   // ("libvips-cpp.so introuvable" en prod uniquement). Force son inclusion.
   outputFileTracingIncludes: {
     "/api/photos/upload": ["./node_modules/@img/**/*", "./node_modules/sharp/**/*"],
-    "/api/debug-upload-deps": ["./node_modules/@img/**/*", "./node_modules/sharp/**/*"],
   },
   images: {
     remotePatterns: [
